@@ -110,6 +110,8 @@ struct _GstQTDemux {
 
   GstTagList *tag_list;
 
+  float transformation_matrix[9];
+
   /* configured playback region */
   GstSegment segment;
   GstEvent *pending_newsegment;
