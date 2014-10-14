@@ -7192,6 +7192,13 @@ qtdemux_inspect_transformation_matrix (GstQTDemux * qtdemux,
                                        (m)[3] == (d << 16) && (m)[4] == (e << 16) && \
                                        (m)[6] == (g << 16) && (m)[7] == (h << 16))
 
+  GST_DEBUG_OBJECT (qtdemux, "matrix[0]: %d", matrix[0]);
+  GST_DEBUG_OBJECT (qtdemux, "matrix[1]: %d", matrix[1]);
+  GST_DEBUG_OBJECT (qtdemux, "matrix[3]: %d", matrix[3]);
+  GST_DEBUG_OBJECT (qtdemux, "matrix[4]: %d", matrix[4]);
+  GST_DEBUG_OBJECT (qtdemux, "matrix[6]: %d", matrix[6]);
+  GST_DEBUG_OBJECT (qtdemux, "matrix[7]: %d", matrix[7]);
+
   /* only handle the cases where the last column has standard values */
   if (matrix[2] == 0 && matrix[5] == 0 && matrix[8] == 1 << 30) {
     const gchar *rotation_tag = NULL;
@@ -7200,7 +7207,8 @@ qtdemux_inspect_transformation_matrix (GstQTDemux * qtdemux,
     if (QTCHECK_MATRIX (matrix, 1, 0, 0, 1, 0, 0)) {
       /* NOP */
     } else if (QTCHECK_MATRIX (matrix, 0, 1, G_MAXUINT16, 0,
-            stream->display_height, 0)) {
+            stream->display_height, 0) ||
+        QTCHECK_MATRIX (matrix, 0, 1, G_MAXUINT16, 0, 0, 0)) {
       rotation_tag = "rotate-90";
     } else if (QTCHECK_MATRIX (matrix, G_MAXUINT16, 0, 0, G_MAXUINT16,
             stream->display_width, stream->display_height)) {
