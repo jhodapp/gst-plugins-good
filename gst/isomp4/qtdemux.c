@@ -3516,15 +3516,15 @@ gst_qtdemux_activate_segment (GstQTDemux * qtdemux, QtDemuxStream * stream,
       stream->to_sample = G_MAXUINT32;
       GST_DEBUG_OBJECT (qtdemux, "moving data pointer to %" GST_TIME_FORMAT
           ", index: %u, pts %" GST_TIME_FORMAT, GST_TIME_ARGS (start), index,
-          GST_TIME_ARGS (gst_util_uint64_scale (stream->
-                  samples[index].timestamp, GST_SECOND, stream->timescale)));
+          GST_TIME_ARGS (gst_util_uint64_scale (stream->samples[index].
+                  timestamp, GST_SECOND, stream->timescale)));
     } else {
       index = gst_qtdemux_find_index_linear (qtdemux, stream, stop);
       stream->to_sample = index;
       GST_DEBUG_OBJECT (qtdemux, "moving data pointer to %" GST_TIME_FORMAT
           ", index: %u, pts %" GST_TIME_FORMAT, GST_TIME_ARGS (stop), index,
-          GST_TIME_ARGS (gst_util_uint64_scale (stream->
-                  samples[index].timestamp, GST_SECOND, stream->timescale)));
+          GST_TIME_ARGS (gst_util_uint64_scale (stream->samples[index].
+                  timestamp, GST_SECOND, stream->timescale)));
     }
   } else {
     GST_DEBUG_OBJECT (qtdemux, "No need to look for keyframe, "
@@ -3619,8 +3619,8 @@ gst_qtdemux_prepare_current_sample (GstQTDemux * qtdemux,
   if (G_UNLIKELY (stream->segment_index != seg_idx))
     gst_qtdemux_activate_segment (qtdemux, stream, seg_idx, time_position);
 
-  if (G_UNLIKELY (QTSEGMENT_IS_EMPTY (&stream->
-              segments[stream->segment_index]))) {
+  if (G_UNLIKELY (QTSEGMENT_IS_EMPTY (&stream->segments[stream->
+                  segment_index]))) {
     QtDemuxSegment *seg = &stream->segments[stream->segment_index];
 
     GST_LOG_OBJECT (qtdemux, "Empty segment activated,"
@@ -7192,12 +7192,16 @@ qtdemux_inspect_transformation_matrix (GstQTDemux * qtdemux,
                                        (m)[3] == (d << 16) && (m)[4] == (e << 16) && \
                                        (m)[6] == (g << 16) && (m)[7] == (h << 16))
 
-  GST_DEBUG_OBJECT (qtdemux, "matrix[0]: %d", matrix[0]);
-  GST_DEBUG_OBJECT (qtdemux, "matrix[1]: %d", matrix[1]);
-  GST_DEBUG_OBJECT (qtdemux, "matrix[3]: %d", matrix[3]);
-  GST_DEBUG_OBJECT (qtdemux, "matrix[4]: %d", matrix[4]);
-  GST_DEBUG_OBJECT (qtdemux, "matrix[6]: %d", matrix[6]);
-  GST_DEBUG_OBJECT (qtdemux, "matrix[7]: %d", matrix[7]);
+  const float inv2exp16 = 1.0f / (float) (1 << 16);
+  const float inv2exp30 = 1.0f / (float) (1 << 30);
+
+  /* Print out the normalized transformation matrix */
+  GST_DEBUG_OBJECT (qtdemux, "%.2f %.2f %.2f", ((int) (matrix[0]) * inv2exp16),
+      ((int) (matrix[1]) * inv2exp16), ((int) (matrix[2]) * inv2exp30));
+  GST_DEBUG_OBJECT (qtdemux, "%.2f %.2f %.2f", ((int) (matrix[3]) * inv2exp16),
+      ((int) (matrix[4]) * inv2exp16), ((int) (matrix[5]) * inv2exp30));
+  GST_DEBUG_OBJECT (qtdemux, "%.2f %.2f %.2f", ((int) (matrix[6]) * inv2exp16),
+      ((int) (matrix[7]) * inv2exp16), ((int) (matrix[8]) * inv2exp30));
 
   /* only handle the cases where the last column has standard values */
   if (matrix[2] == 0 && matrix[5] == 0 && matrix[8] == 1 << 30) {
@@ -7211,10 +7215,12 @@ qtdemux_inspect_transformation_matrix (GstQTDemux * qtdemux,
         QTCHECK_MATRIX (matrix, 0, 1, G_MAXUINT16, 0, 0, 0)) {
       rotation_tag = "rotate-90";
     } else if (QTCHECK_MATRIX (matrix, G_MAXUINT16, 0, 0, G_MAXUINT16,
-            stream->display_width, stream->display_height)) {
+            stream->display_width, stream->display_height) ||
+        QTCHECK_MATRIX (matrix, G_MAXUINT16, 0, 0, G_MAXUINT16, 0, 0)) {
       rotation_tag = "rotate-180";
     } else if (QTCHECK_MATRIX (matrix, 0, G_MAXUINT16, 1, 0, 0,
-            stream->display_width)) {
+            stream->display_width) ||
+        QTCHECK_MATRIX (matrix, 0, G_MAXUINT16, 1, 0, 0, 0)) {
       rotation_tag = "rotate-270";
     } else {
       GST_FIXME_OBJECT (qtdemux, "Unhandled transformation matrix values");
